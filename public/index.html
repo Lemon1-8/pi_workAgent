@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>工作智能体 · 订单合并</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="任务导航">
+      <a class="brand" href="/" aria-label="工作智能体首页">
+        <span class="brand-mark" aria-hidden="true">π</span>
+        <span><strong>工作智能体</strong><small>电商运营工作台</small></span>
+      </a>
+      <div class="workspace-label"><span class="tiny-dot"></span> 本地开发空间 <span class="local-label">原型</span></div>
+      <div class="sidebar-section-label">工作流程</div>
+      <div class="workflow-nav selected"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M10 9v12M4 15h16"/></svg><span>订单合并</span><span class="nav-indicator"></span></div>
+      <div class="workflow-nav upcoming"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M16 3l4 4-4 4M8 13l-4 4 4 4"/></svg><span>账单对账</span><small>后续</small></div>
+      <div class="workflow-nav upcoming"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 20h16M9 16v-5M14 16V7M19 16V3"/></svg><span>销售 / 库存分析</span><small>后续</small></div>
+      <div class="task-heading"><span class="sidebar-section-label">任务记录</span><button id="new-batch" class="icon-button" title="新建任务" aria-label="新建任务">＋</button></div>
+      <div id="task-list" class="task-list"><div class="sidebar-empty">正在读取任务…</div></div>
+      <button id="new-batch-bottom" class="new-task-button"><span aria-hidden="true">＋</span> 新建合并任务</button>
+      <div class="sidebar-footer"><span class="user-avatar">本</span><div><strong>本机使用</strong><small>团队部署待接入</small></div><span id="connection-dot" class="connection-dot" title="正在连接"></span></div>
+    </aside>
+
+    <main class="main-column">
+      <header class="topbar"><div class="breadcrumb">运营工作台 <span>/</span> <strong>订单合并</strong></div><span id="connection-label" class="connection-label">正在连接服务</span></header>
+      <div id="error-banner" class="error-banner" role="alert" hidden><span id="error-text"></span><button id="dismiss-error" aria-label="关闭提示">×</button></div>
+      <section class="task-header">
+        <div class="eyebrow">文件处理工作流</div>
+        <div class="title-row"><h1 id="batch-title">把订单汇到一张表</h1><span id="batch-status" class="status-pill" hidden></span></div>
+        <p id="batch-subtitle">创建任务，选择订单文件夹，再开始批量处理。</p>
+        <div id="batch-metrics" class="batch-metrics" hidden><span><strong id="metric-files">0</strong> 份文件</span><span><strong id="metric-size">0 B</strong> 数据</span><span id="metric-time"></span></div>
+      </section>
+
+      <div class="work-area">
+        <section id="welcome" class="welcome-panel">
+          <div class="sheet-illustration" aria-hidden="true"><div class="sheet-back"></div><div class="sheet-front"><span></span><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="sheet-arrow">↗</div></div>
+          <div class="eyebrow">从一批真实文件开始</div>
+          <h2>多个店铺，一份统一结果。</h2>
+          <p>上传订单导出文件，查看处理进度，下载合并结果。<br>每一批文件都有独立的任务记录。</p>
+          <button id="welcome-create" class="button primary">新建订单合并任务 <span aria-hidden="true">↗</span></button>
+          <div class="workflow-steps"><div><b>01</b><span>选择文件夹</span></div><div><b>02</b><span>上传并处理</span></div><div><b>03</b><span>下载结果表</span></div></div>
+        </section>
+
+        <section id="active-work" class="active-work" hidden>
+          <div class="run-card">
+            <div class="run-card-heading"><div><span id="phase-icon" class="phase-icon" aria-hidden="true">↗</span><strong id="phase-title">准备输入文件</strong></div><span id="phase-count" class="mono"></span></div>
+            <p id="phase-message">选择文件夹后，确认清单并上传。</p>
+            <div class="progress-track"><div id="progress-bar"></div></div>
+            <div class="run-actions"><span id="executor-note" class="muted"></span><button id="cancel-batch" class="button subtle" hidden>取消执行</button><button id="start-batch" class="button primary" disabled>开始合并 <span aria-hidden="true">↗</span></button></div>
+          </div>
+
+          <section id="review-panel" class="review-panel" aria-label="处理前检查与规则确认">
+            <div class="review-heading"><div><span class="eyebrow">处理前检查</span><h2>先核对输入，再合并</h2></div><span id="check-badge" class="outline-label">尚未检查</span></div>
+            <p id="check-description" class="review-description">上传后检查工作表、字段和全部数据行。修正异常后可复用已成功解析的文件。</p>
+            <div class="review-actions"><button id="check-batch" class="button compact">检查输入</button><button id="retry-check" class="button compact" hidden>只重试异常文件</button><a id="download-check" class="text-link" hidden download>下载检查报告</a></div>
+            <div id="check-metrics" class="check-metrics" hidden></div>
+            <div id="check-warnings" class="check-warnings" hidden></div>
+            <details id="rules-details" class="rules-details"><summary>字段映射与复用模板 <span id="rule-caption"></span></summary>
+              <div class="template-row"><label for="template-select">已保存模板</label><select id="template-select"><option value="">选择一个模板版本</option></select><button id="apply-template" class="button compact">应用</button></div>
+              <label class="field-label" for="result-columns">结果字段（每行一个；留空时使用第一张有效表的字段）</label><textarea id="result-columns" rows="3" placeholder="订单号&#10;商品&#10;金额"></textarea>
+              <p class="review-description">修改字段后点击“更新映射选项”，为每类来源字段选择对应的结果字段。金额计算和业务去重仍由业务适配器定义。</p>
+              <button id="refresh-mapping" class="button compact">更新映射选项</button>
+              <div id="schema-list" class="schema-list"></div>
+              <fieldset id="sheet-options" class="sheet-options"><legend>处理工作表</legend><p class="review-description">默认处理全部工作表；取消不需要的统计表。选择至少一张。</p><div id="sheet-list"></div></fieldset>
+              <div class="review-actions"><button id="save-rules" class="button compact">确认规则并检查</button></div>
+              <div class="template-row"><label for="template-name">保存当前规则</label><input id="template-name" maxlength="120" placeholder="例如：每月订单字段模板"><button id="save-template" class="button compact">保存模板</button></div>
+            </details>
+            <div id="check-issues" class="check-issues" hidden></div>
+          </section>
+
+          <div class="conversation-heading"><h2>与智能体协作</h2><span class="section-caption">讨论规则 · 调用工具 · 追踪结果</span></div>
+          <div id="message-list" class="message-list" aria-live="polite"></div>
+          <div id="chat-tools" class="chat-tools" hidden></div>
+          <form id="chat-form" class="composer">
+            <label class="sr-only" for="chat-input">给智能体的消息</label>
+            <textarea id="chat-input" rows="2" placeholder="查询状态，或按已确认规则启动合并…" maxlength="8000"></textarea>
+            <div class="composer-bottom"><span id="agent-note">正在检查智能体配置</span><button id="send-message" class="send-button" type="submit" aria-label="发送消息" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div>
+          </form>
+          <details class="events-panel"><summary>任务活动 <span id="event-count">0</span></summary><ol id="event-list"></ol></details>
+        </section>
+      </div>
+      <footer class="main-footer"><span>本地开发原型</span><span>批次记录自动保存</span></footer>
+    </main>
+
+    <aside class="inspector" aria-label="输入文件和任务产物">
+      <div class="inspector-header"><h2>任务文件</h2><span class="outline-label">XLSX</span></div>
+      <section class="input-section">
+        <div class="section-title"><h3>输入文件</h3><span id="input-count" class="count-label">0</span></div>
+        <div id="file-dropzone" class="file-dropzone">
+          <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M5 11a3 3 0 0 1 3-3h7l3 4h10a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3Z"/><path d="M18 24v-7M14 21l4-4 4 4"/></svg>
+          <strong>选择订单文件夹</strong><p>包含子文件夹中的 .xlsx 文件</p>
+          <button id="choose-folder" class="button compact">选择文件夹</button>
+          <button id="choose-files" class="text-button">或选择单个文件</button>
+        </div>
+        <input id="folder-input" type="file" webkitdirectory multiple accept=".xlsx" hidden>
+        <input id="files-input" type="file" multiple accept=".xlsx" hidden>
+        <div id="selection-summary" class="selection-summary" hidden></div>
+        <div id="upload-actions" class="upload-actions" hidden><button id="upload-files" class="button primary">确认上传</button><button id="pause-upload" class="button compact" hidden>暂停上传</button></div>
+        <div class="file-filters"><label class="sr-only" for="file-search">搜索文件或店铺</label><input id="file-search" type="search" placeholder="搜索文件或店铺"><label class="sr-only" for="file-filter">文件状态</label><select id="file-filter"><option value="all">全部输入</option><option value="active">参与处理</option><option value="excluded">已排除</option><option value="failed">存在异常</option><option value="pending">未上传</option></select></div>
+        <div id="file-list" class="file-list"></div>
+        <div id="file-pagination" class="file-pagination" hidden><button id="file-prev" aria-label="上一页">←</button><span id="file-page-label"></span><button id="file-next" aria-label="下一页">→</button></div>
+        <details id="upload-errors" class="upload-errors" hidden open><summary id="upload-error-summary"></summary><ul id="upload-error-list"></ul></details>
+        <p id="file-help" class="file-help">先新建一个任务，再添加文件。</p>
+        <input id="replacement-input" type="file" accept=".xlsx" hidden>
+      </section>
+      <section class="output-section"><div class="section-title"><h3>任务产物</h3><span id="output-count" class="count-label">0</span></div><div id="output-list" class="output-list"><div class="empty-output"><span aria-hidden="true">↙</span><p>处理完成后，结果会出现在这里。</p></div></div></section>
+      <div class="inspector-note"><span class="tiny-dot"></span><p>上传与执行各有独立状态。重新选择原文件夹可继续未完成的上传。</p></div>
+    </aside>
+  </div>
+
+  <dialog id="create-dialog"><form id="create-form"><div class="dialog-heading"><div><span class="eyebrow">订单合并</span><h2>新建任务</h2></div><button id="close-dialog" class="icon-button" type="button" aria-label="关闭">×</button></div><label for="batch-name">任务名称</label><input id="batch-name" name="name" maxlength="120" placeholder="例如：10 月店铺订单汇总" required><p>给这一批文件取一个方便查找的名字。</p><div class="dialog-actions"><button id="cancel-dialog" class="button" type="button">取消</button><button id="create-submit" class="button primary" type="submit">创建任务</button></div></form></dialog>
+  <dialog id="exclude-dialog"><form id="exclude-form"><div class="dialog-heading"><h2>排除输入文件</h2></div><p id="exclude-file-name"></p><label for="exclude-reason">排除原因（会保留在检查与成果报告中）</label><input id="exclude-reason" maxlength="500" required placeholder="例如：重复导出或不属于本期数据"><div class="dialog-actions"><button id="exclude-cancel" class="button" type="button">取消</button><button id="exclude-submit" class="button primary" type="submit">确认排除</button></div></form></dialog>
+  <dialog id="preview-dialog" class="preview-dialog"><div class="dialog-heading"><div><span class="eyebrow">已验收成果</span><h2 id="preview-title">结果预览</h2></div><button id="preview-close" class="icon-button" aria-label="关闭预览">×</button></div><div class="preview-toolbar"><label for="preview-sheet">工作表</label><select id="preview-sheet"></select><span id="preview-range"></span></div><p id="preview-error" role="alert" hidden></p><div id="preview-table" class="preview-table"></div><div class="dialog-actions"><button id="preview-prev" class="button">上一页</button><button id="preview-next" class="button">下一页</button></div></dialog>
+</body>
+</html>
